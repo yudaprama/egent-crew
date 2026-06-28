@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
-	"runtime"
 	"sync"
 	"time"
 
@@ -74,43 +74,37 @@ func buildShell(_ context.Context) ([]tool.InvokableTool, error) {
 				return "", runErr
 			}
 
-			// Synchronous: enforce timeout via context + manual kill
-			cctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
-			defer cancel()
+			// Synchronous: enforce timeout via manual process kill
+			cmd := exec.Command("sh", "-c", in.Command)
+			stdout, _ := cmd.StdoutPipe()
+			stderr, _ := cmd.StderrPipe()
+			if err := cmd.Start(); err != nil {
+				return fmt.Sprintf(`{"success":false,"exit_code":-1,"output":"","stdout":"","stderr":%s}`, escapeJSON(err.Error())), nil
+			}
 
-			cmd := makeShellCmd(cctx, in.Command)
-			var mu sync.Mutex
-			killed := false
-
-			go func() {
-				<-cctx.Done()
-				mu.Lock()
-				defer mu.Unlock()
-				if cmd.Process != nil && cctx.Err() == context.DeadlineExceeded {
-					killed = true
+			timer := time.AfterFunc(time.Duration(timeout)*time.Second, func() {
+				if cmd.Process != nil {
 					cmd.Process.Kill()
 				}
-			}()
+			})
 
-			output, err := cmd.CombinedOutput()
-			exitCode := 0
-			if err != nil {
-				if exitErr, ok := err.(*exec.ExitError); ok {
-					exitCode = exitErr.ExitCode()
+			outBytes, _ := io.ReadAll(stdout)
+			errBytes, _ := io.ReadAll(stderr)
+			waitErr := cmd.Wait()
+			timer.Stop()
+
+			outStr := string(outBytes)
+			errStr := string(errBytes)
+			combined := outStr
+			if errStr != "" {
+				if combined != "" {
+					combined += "\n"
 				}
+				combined += errStr
 			}
 
-			mu.Lock()
-			wasKilled := killed
-			mu.Unlock()
-
-			if wasKilled {
-				return fmt.Sprintf(`{"success":false,"exit_code":-1,"output":"command killed after %ds timeout","stdout":"","stderr":"%s"}`,
-					timeout, escapeJSON(string(output))), nil
-			}
-
-			return fmt.Sprintf(`{"success":%v,"exit_code":%d,"output":%s,"stdout":%s,"stderr":""}`,
-				err == nil, exitCode, escapeJSON(string(output)), escapeJSON(string(output))), nil
+			return fmt.Sprintf(`{"success":%v,"exit_code":%d,"output":%s,"stdout":%s,"stderr":%s}`,
+				waitErr == nil, exitCodeFromErr(waitErr), escapeJSON(combined), escapeJSON(outStr), escapeJSON(errStr)), nil
 		},
 	)
 	if err != nil {
@@ -138,16 +132,17 @@ func buildShell(_ context.Context) ([]tool.InvokableTool, error) {
 	return []tool.InvokableTool{runTool, killTool}, nil
 }
 
-func makeShellCmd(ctx context.Context, command string) *exec.Cmd {
-	switch runtime.GOOS {
-	case "windows":
-		return exec.CommandContext(ctx, "cmd", "/C", command)
-	default:
-		return exec.CommandContext(ctx, "sh", "-c", command)
-	}
-}
-
 func escapeJSON(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)
+}
+
+func exitCodeFromErr(err error) int {
+	if err == nil {
+		return 0
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return exitErr.ExitCode()
+	}
+	return -1
 }
