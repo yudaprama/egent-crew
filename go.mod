@@ -5,9 +5,9 @@ go 1.26.4
 require (
 	github.com/cloudwego/eino v0.9.10
 	github.com/cloudwego/eino-ext/components/model/openai v0.1.13
-	github.com/cloudwego/eino-ext/components/tool/browseruse v0.0.0
-	github.com/cloudwego/eino-ext/components/tool/commandline v0.0.0
-	github.com/cloudwego/eino-ext/components/tool/httprequest v0.0.0
+	github.com/cloudwego/eino-ext/components/tool/browseruse v0.0.0-20260616080858-ab17b7308bf8
+	github.com/cloudwego/eino-ext/components/tool/commandline v0.0.0-20260616080858-ab17b7308bf8
+	github.com/cloudwego/eino-ext/components/tool/httprequest v0.0.0-20260616080858-ab17b7308bf8
 	github.com/joho/godotenv v1.5.1
 	github.com/yudaprama/otelcallback v1.0.0
 	github.com/yudaprama/tools v0.2.0
@@ -103,9 +103,3 @@ require (
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
-
-replace github.com/cloudwego/eino-ext/components/tool/httprequest => ../eino-ext/components/tool/httprequest
-
-replace github.com/cloudwego/eino-ext/components/tool/browseruse => ../eino-ext/components/tool/browseruse
-
-replace github.com/cloudwego/eino-ext/components/tool/commandline => ../eino-ext/components/tool/commandline

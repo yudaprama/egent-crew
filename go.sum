@@ -48,8 +48,14 @@ github.com/cloudwego/eino v0.9.10 h1:WcYilVnGZDgec6bBwJ/cG5B3R3SePWuVRX6gCPa2OG0
 github.com/cloudwego/eino v0.9.10/go.mod h1:OBD1mrkfkt/pJa4rkg1P0VnaMeOVl7l8IAdEqY//3IQ=
 github.com/cloudwego/eino-ext/components/model/openai v0.1.13 h1:5XHRTiTD5bt9KQrMHcfvuWNklEC3tpm3XHejdozt9vM=
 github.com/cloudwego/eino-ext/components/model/openai v0.1.13/go.mod h1:mgIoqYYOc0eECCqvLbEYpOJrQNTNxkwXzSJzFU+v5sQ=
+github.com/cloudwego/eino-ext/components/tool/browseruse v0.0.0-20260616080858-ab17b7308bf8 h1:6LocMgWfrRZCxDBwAiqIkmeeJhG9Drairo922OkdcUU=
+github.com/cloudwego/eino-ext/components/tool/browseruse v0.0.0-20260616080858-ab17b7308bf8/go.mod h1:a+pHHWgeL8QNNIzAKyXKOeoLJiYXX8tTeQy2wMQkfIY=
+github.com/cloudwego/eino-ext/components/tool/commandline v0.0.0-20260616080858-ab17b7308bf8 h1:32ltOgGeYvndDZp/URzAvnX94yko0ZG1YWaTFKd77cA=
+github.com/cloudwego/eino-ext/components/tool/commandline v0.0.0-20260616080858-ab17b7308bf8/go.mod h1:cMZb1KM71kM+2hTJwxLwXT+HC66HimZirDDA5Oo64Hw=
 github.com/cloudwego/eino-ext/components/tool/duckduckgo/v2 v2.0.0-20260616080858-ab17b7308bf8 h1:bTM/vEBn/eQ5uXEBYPQFtZ/StrFEFP7Uv+A2xyPApe8=
 github.com/cloudwego/eino-ext/components/tool/duckduckgo/v2 v2.0.0-20260616080858-ab17b7308bf8/go.mod h1:Np0BXy/9hPRu3wCgn+ij6L7YsjFcybVzg1k7uYOXh0M=
+github.com/cloudwego/eino-ext/components/tool/httprequest v0.0.0-20260616080858-ab17b7308bf8 h1:8H515uyQsZ2v95l5oi4MlJcmUhtXxTOpBUKZUH256Dg=
+github.com/cloudwego/eino-ext/components/tool/httprequest v0.0.0-20260616080858-ab17b7308bf8/go.mod h1:4YHp/Tzdfu7dvEkZzxmJ70A4BUWuMvDWJq9UQvtQwmc=
 github.com/cloudwego/eino-ext/libs/acl/openai v0.1.17 h1:EeVcR1TslRA2IdNW1h/2LaGbPlffwGhQm99jM3zWZiI=
 github.com/cloudwego/eino-ext/libs/acl/openai v0.1.17/go.mod h1:Zkcx6DPTR2NfWmtSXbhItswGw6hqUezNPhNcke0pOG8=
 github.com/cloudwego/eino-ext/libs/acl/opentelemetry v0.0.0-20260616080858-ab17b7308bf8 h1:l+DMFyv6Bc6bDuPEvZd1ltt+4RuJq2Sce6Dozpf1ATM=
