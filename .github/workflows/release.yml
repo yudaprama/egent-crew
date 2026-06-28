@@ -14,6 +14,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Configure git for private deps
+        run: |
+          git config --global url."https://${{ secrets.GO_PRIVATE_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -21,6 +25,10 @@ jobs:
 
       - name: Run tests
         run: go test ./...
+        env:
+          GONOSUMCHECK: github.com/yudaprama/*
+          GONOSUMDB: github.com/yudaprama/*
+          GOFLAGS: -mod=mod
 
       - name: Build Linux binary
         run: |
