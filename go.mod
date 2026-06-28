@@ -1,6 +1,6 @@
 module egent-crew
 
-go 1.26.0
+go 1.26.4
 
 require (
 	github.com/cloudwego/eino v0.9.10
