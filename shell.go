@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os/exec"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/cloudwego/eino/components/tool"
@@ -14,10 +17,16 @@ import (
 const defaultCommandTimeout = 120 // seconds
 
 type runCommandInput struct {
-	Command string `json:"command" jsonschema:"required,description=Shell command string. Runs via sh -c so pipes (|), chaining (&&), redirection (>), env vars ($X), backticks, and globs all work. Executes in the workspace cwd."`
-	RunInBackground bool `json:"run_in_background,omitempty" jsonschema:"description=If true, start detached and return a shell_id (stop it later with kill_command). If false (default), run synchronously and return combined stdout+stderr plus exit_code."`
-	Timeout int `json:"timeout,omitempty" jsonschema:"description=Max seconds before the command is killed. Default 120. Honored even for synchronous commands."`
+	Command         string `json:"command" jsonschema:"required,description=Shell command string. Runs via sh -c so pipes (|), chaining (&&), redirection (>), env vars ($X), backticks, and globs all work. Executes in the workspace cwd."`
+	RunInBackground bool   `json:"run_in_background,omitempty" jsonschema:"description=If true, start detached and return a shell_id (stop it later with kill_command). If false (default), run synchronously and return combined stdout+stderr plus exit_code."`
+	Timeout         int    `json:"timeout,omitempty" jsonschema:"description=Max seconds before the command is killed. Default 120. Honored even for synchronous commands."`
 }
+
+// local background shell tracking (used when localfs doesn't enforce timeouts)
+var (
+	bgCmds   = make(map[string]*exec.Cmd)
+	bgCmdsMu sync.Mutex
+)
 
 type killCommandInput struct {
 	ShellID string `json:"shell_id" jsonschema:"required,description=The shell_id returned by run_command when run_in_background was true"`
@@ -51,19 +60,57 @@ func buildShell(_ context.Context) ([]tool.InvokableTool, error) {
 			if timeout <= 0 {
 				timeout = defaultCommandTimeout
 			}
+
+			if in.RunInBackground {
+				res, runErr := svc.RunCommand(ctx, localfs.RunCommandParams{
+					Command:         in.Command,
+					RunInBackground: true,
+					Timeout:         timeout,
+				})
+				if res != nil {
+					out, _ := json.Marshal(res)
+					return string(out), runErr
+				}
+				return "", runErr
+			}
+
+			// Synchronous: enforce timeout via context + manual kill
 			cctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 			defer cancel()
 
-			res, runErr := svc.RunCommand(cctx, localfs.RunCommandParams{
-				Command:         in.Command,
-				RunInBackground: in.RunInBackground,
-				Timeout:         timeout,
-			})
-			if res != nil {
-				out, _ := json.Marshal(res)
-				return string(out), runErr
+			cmd := makeShellCmd(cctx, in.Command)
+			var mu sync.Mutex
+			killed := false
+
+			go func() {
+				<-cctx.Done()
+				mu.Lock()
+				defer mu.Unlock()
+				if cmd.Process != nil && cctx.Err() == context.DeadlineExceeded {
+					killed = true
+					cmd.Process.Kill()
+				}
+			}()
+
+			output, err := cmd.CombinedOutput()
+			exitCode := 0
+			if err != nil {
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					exitCode = exitErr.ExitCode()
+				}
 			}
-			return "", runErr
+
+			mu.Lock()
+			wasKilled := killed
+			mu.Unlock()
+
+			if wasKilled {
+				return fmt.Sprintf(`{"success":false,"exit_code":-1,"output":"command killed after %ds timeout","stdout":"","stderr":"%s"}`,
+					timeout, escapeJSON(string(output))), nil
+			}
+
+			return fmt.Sprintf(`{"success":%v,"exit_code":%d,"output":%s,"stdout":%s,"stderr":""}`,
+				err == nil, exitCode, escapeJSON(string(output)), escapeJSON(string(output))), nil
 		},
 	)
 	if err != nil {
@@ -89,4 +136,18 @@ func buildShell(_ context.Context) ([]tool.InvokableTool, error) {
 	}
 
 	return []tool.InvokableTool{runTool, killTool}, nil
+}
+
+func makeShellCmd(ctx context.Context, command string) *exec.Cmd {
+	switch runtime.GOOS {
+	case "windows":
+		return exec.CommandContext(ctx, "cmd", "/C", command)
+	default:
+		return exec.CommandContext(ctx, "sh", "-c", command)
+	}
+}
+
+func escapeJSON(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }
