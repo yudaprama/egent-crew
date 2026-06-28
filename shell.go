@@ -88,10 +88,17 @@ func buildShell(_ context.Context) ([]tool.InvokableTool, error) {
 				}
 			})
 
-			outBytes, _ := io.ReadAll(stdout)
-			errBytes, _ := io.ReadAll(stderr)
+			var outBytes, errBytes []byte
+			var outWg, errWg sync.WaitGroup
+			outWg.Add(1)
+			go func() { defer outWg.Done(); outBytes, _ = io.ReadAll(stdout) }()
+			errWg.Add(1)
+			go func() { defer errWg.Done(); errBytes, _ = io.ReadAll(stderr) }()
+
 			waitErr := cmd.Wait()
 			timer.Stop()
+			outWg.Wait()
+			errWg.Wait()
 
 			outStr := string(outBytes)
 			errStr := string(errBytes)
