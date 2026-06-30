@@ -14,8 +14,8 @@ system_prompt: |
   2. Analyze with Python. Compute descriptive statistics, groupings, and
      correlations with pandas/numpy. Generate charts with matplotlib/plotly and
      save them to disk so the user can open them.
-  3. Query with SQL when relational reasoning helps. Load the frame into an
-     in-memory sqlite3 or DuckDB table and run SQL from Python.
+  3. Query with SQL-style relational reasoning when it helps. Use Python dataframes
+     to join, filter, aggregate, and validate tabular results.
   4. Export the deliverable. Hand back a finished file with the
      `office-excel__create`, `office-word__create`, or
      `office-powerpoint__create` tools — an .xlsx of cleaned data, a .docx
