@@ -5,8 +5,10 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -125,8 +127,8 @@ func mustCwd() string {
 }
 
 var (
-	version    string // set via ldflags at build time
-	agentCrew  *crew
+	version      string // set via ldflags at build time
+	agentCrew    *crew
 	agentRunOpts []adk.AgentRunOption
 )
 
@@ -368,7 +370,50 @@ func handleStreamingResponse(w http.ResponseWriter, req ChatCompletionRequest, i
 		}
 
 		if event.Output != nil && event.Output.MessageOutput != nil {
-			msg, err := event.Output.MessageOutput.GetMessage()
+			mv := event.Output.MessageOutput
+			// Forward the upstream token stream frame-by-frame so the client
+			// renders progressively. GetMessage()/concatMessageStream would
+			// block until the whole response is materialized, which makes the
+			// stream arrive as a single burst (the "complete response at once"
+			// symptom).
+			if mv.IsStreaming && mv.MessageStream != nil {
+				for {
+					tok, err := mv.MessageStream.Recv()
+					if errors.Is(err, io.EOF) {
+						break
+					}
+					if err != nil {
+						log.Printf("stream recv error: %v", err)
+						break
+					}
+					if tok == nil || tok.Role != schema.Assistant || tok.Content == "" {
+						continue
+					}
+					chunk := ChatCompletionChunk{
+						ID:      requestID,
+						Object:  "chat.completion.chunk",
+						Created: time.Now().Unix(),
+						Model:   req.Model,
+						Choices: []ChatCompletionChunkChoice{
+							{
+								Index: 0,
+								Delta: ChatCompletionMessage{
+									Role:    "assistant",
+									Content: tok.Content,
+								},
+								FinishReason: nil,
+							},
+						},
+					}
+					data, _ := json.Marshal(chunk)
+					fmt.Fprintf(writer, "data: %s\n\n", data)
+					writer.Flush()
+					flusher.Flush()
+				}
+				mv.MessageStream.Close()
+				continue
+			}
+			msg, err := mv.GetMessage()
 			if err != nil {
 				log.Printf("get message error: %v", err)
 				continue
