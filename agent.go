@@ -72,7 +72,7 @@ func newChatModel(ctx context.Context) (*openai.ChatModel, error) {
 
 	modelName := os.Getenv("MODEL_NAME")
 	if modelName == "" {
-		modelName = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+		modelName = "kawai/kawai-pro-max"
 	}
 
 	chatModel, err := openai.NewChatModel(ctx, &openai.ChatModelConfig{
